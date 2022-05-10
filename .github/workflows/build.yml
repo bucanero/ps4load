@@ -1,0 +1,83 @@
+name: Build package
+
+on: [ push, pull_request, workflow_dispatch ]
+
+jobs:
+  build_pkg:
+    runs-on: ubuntu-20.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1
+
+    - name: Checkout Dependecies
+      run: |
+        git clone https://github.com/bucanero/dbglogger.git       --depth 1
+        git clone https://github.com/bucanero/zip.git             --depth 1
+        git clone https://github.com/bucanero/oosdk_libraries.git --depth 1
+        git clone https://github.com/bucanero/SDL-PS4 -b ps4      --depth 1
+
+    - name: Set env vars
+      id: slug
+      run: |
+        echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
+        echo "pkg_file=IV0000-LOAD00044_00-SDL2GLES20000000.pkg" >> $GITHUB_ENV
+        echo "llvm_ver=10.0" >> $GITHUB_ENV
+
+      # temporary release until 0.53 is released
+    - name: Download OpenOrbis Toolchain
+      run: |
+        curl -sL https://github.com/illusion0001/OpenOrbis-PS4-Toolchain/releases/download/0.0.1.416/toolchain.tar.gz | tar xvz -C ./
+        echo "OO_PS4_TOOLCHAIN=${GITHUB_WORKSPACE}/OpenOrbis/PS4Toolchain" >> $GITHUB_ENV
+        cp oosdk_libraries/build_rules.mk OpenOrbis/PS4Toolchain/build_rules.mk
+
+    - name: Cache LLVM and Clang
+      id: cache-llvm
+      uses: actions/cache@v3
+      with:
+        path: ./llvm
+        key: llvm-${{ env.llvm_ver }}
+
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: ${{ env.llvm_ver }}
+        cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+
+    - name: Install zlib
+      working-directory: oosdk_libraries/zlib_partial
+      run: |
+        make install
+
+    - name: Install zip
+      working-directory: zip
+      run: |
+        make install
+
+    - name: Install dbglogger
+      working-directory: dbglogger
+      run: |
+        make -f Makefile.PS4 install
+
+    - name: Install SDL2 library
+      working-directory: SDL-PS4
+      run: |
+        mkdir orbis && cd orbis
+        cmake --toolchain ../cmake/openorbis.cmake ..
+        make
+        cp libSDL2.a "${OO_PS4_TOOLCHAIN}/lib"
+
+    - name: Build App Package
+      run: |
+        make
+
+    - name: Push package artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ps4load-build_${{ steps.slug.outputs.sha8 }}
+        path: ${{ env.pkg_file }}
+        if-no-files-found: error
+        retention-days: 7
+        # don't keep artifacts for too long
