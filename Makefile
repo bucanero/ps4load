@@ -1,11 +1,11 @@
 # Package metadata.
 TITLE       := PS4Load
 VERSION     := 00.10
-TITLE_ID    := LOAD00040
-CONTENT_ID  := IV0000-LOAD00040_00-OPENORBIS0000000
+TITLE_ID    := LOAD00044
+CONTENT_ID  := IV0000-LOAD00044_00-SDL2GLES20000000
 
 # Libraries linked into the ELF.
-LIBS        := -lc -lkernel -lc++ -ldbglogger -lSceSystemService -lSceSysmodule -lScePigletv2VSH -lSceAudioOut -lScePad -lSceUserService -lSceFreeType -lSDL2 -lz
+LIBS        := -lc -lkernel -ldbglogger -lSceSystemService -lSceSysmodule -lScePigletv2VSH -lSceAudioOut -lScePad -lSceUserService -lSceFreeType -lSDL2 -lz
 
 # Additional compile flags.
 #EXTRAFLAGS  := 
@@ -19,7 +19,6 @@ LIBMODULES  := $(wildcard sce_module/*)
 # Root vars
 TOOLCHAIN   := $(OO_PS4_TOOLCHAIN)
 PROJDIR     := $(shell basename $(CURDIR))
-COMMONDIR   := $(TOOLCHAIN)/samples/_common
 INTDIR      := $(PROJDIR)/x64/Debug
 
 # Define objects to build
@@ -64,7 +63,7 @@ sce_sys/param.sfo: Makefile
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ APP_TYPE --type Integer --maxsize 4 --value 1
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ APP_VER --type Utf8 --maxsize 8 --value '$(VERSION)'
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ ATTRIBUTE --type Integer --maxsize 4 --value 32
-	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ CATEGORY --type Utf8 --maxsize 4 --value 'gd'
+	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ CATEGORY --type Utf8 --maxsize 4 --value 'gde'
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ CONTENT_ID --type Utf8 --maxsize 48 --value '$(CONTENT_ID)'
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ DOWNLOAD_DATA_SIZE --type Integer --maxsize 4 --value 0
 	$(TOOLCHAIN)/bin/$(CDIR)/PkgTool.Core sfo_setentry $@ SYSTEM_VER --type Integer --maxsize 4 --value 0

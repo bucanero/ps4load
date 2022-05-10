@@ -218,39 +218,6 @@ reloop:
     return 0;
 }
 
-/*
-int soft()
-{
-    window = SDL_CreateWindow("main", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, FRAME_WIDTH, FRAME_HEIGHT, 0);
-    if (!window)
-    {
-        dbglogger_log("Failed to create window: %s", SDL_GetError());
-        return (-1);
-    }
-
-    // Create a software rendering instance for the window
-    renderer = SDL_CreateSoftwareRenderer(SDL_GetWindowSurface(window));
-    if (!renderer)
-    {
-        dbglogger_log("Failed to create software renderer: %s", SDL_GetError());
-        return (-1);
-    }
-
-    while (1)
-    {
-        // Clear the canvas
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xFF);
-        SDL_RenderClear(renderer);
-
-        // Run all rendering routines
-//        render(renderer);
-
-        // Propagate the updated window to the screen
-        SDL_UpdateWindowSurface(window);
-    }
-}
-*/
-
 int main(int argc, char *argv[])
 {
     SDL_Event event;
@@ -270,10 +237,6 @@ int main(int argc, char *argv[])
     /// available switch SDL2 video modes :
     /// 1920 x 1080 @ 32 bpp (SDL_PIXELFORMAT_RGBA8888)
     /// 1280 x 720 @ 32 bpp (SDL_PIXELFORMAT_RGBA8888)
-    ///
-    /// SDL_SetWindowSize to change window size when SDL_WINDOW_FULLSCREEN is NOT used (preferably)
-    /// SDL_SetDisplayMode to change display size after SDL_CreateWindow called with SDL_WINDOW_FULLSCREEN
-    /// (this means window size won't change, you'll need to handle that, as any SDL2 app)
     window = SDL_CreateWindow("sdl2_gles2", 0, 0, FRAME_WIDTH, FRAME_HEIGHT, 0);
     if (!window) {
         dbglogger_log("SDL_CreateWindow: %s", SDL_GetError());
@@ -284,7 +247,7 @@ int main(int argc, char *argv[])
     // create a renderer (OpenGL ES2)
     renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer) {
-        dbglogger_log("SDL_CreateRenderer: %s\n", SDL_GetError());
+        dbglogger_log("SDL_CreateRenderer: %s", SDL_GetError());
         SDL_Quit();
         return -1;
     }
@@ -320,7 +283,7 @@ int main(int argc, char *argv[])
 
     while (!done)
     {
-        SDL_SetRenderDrawColor(renderer, 60, 60, 60, 255);
+        SDL_SetRenderDrawColor(renderer, 60, 60, 60, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
 
         draw_copperbars(renderer);
