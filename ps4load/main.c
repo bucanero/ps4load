@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
 
         draw_copperbars(renderer);
 
-        DrawString(renderer, "PS4Load " VERSION, fontFace, fgColor, 0, 100);
+        DrawString(renderer, "PS4Load " VERSION " by Bucanero", fontFace, fgColor, 0, 100);
         DrawString(renderer, msg_two, fontFace, fgColor, 0, 800);
 
         if (msg_error[0]) {
