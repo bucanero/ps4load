@@ -22,7 +22,6 @@
 
 #include "ttf.h"
 
-#define RGBA(r, g, b, a)        (((r) << 24) | ((g) << 16) | ((b) << 8) | (a))
 #define MIN(a, b)               ((a) < (b) ? (a) : (b))
 #define SELF_PATH               "/data/ps4load.tmp"
 #define VERSION                 "v0.5.0"
