@@ -14,20 +14,24 @@
 #include <orbis/Sysmodule.h>
 #include <orbis/SystemService.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 
 #include <zlib.h>
 #include <dbglogger.h>
+#include <zip.h>
 
 #include "ttf.h"
 
 #define RGBA(r, g, b, a)        (((r) << 24) | ((g) << 16) | ((b) << 8) | (a))
 #define MIN(a, b)               ((a) < (b) ? (a) : (b))
 #define SELF_PATH               "/data/ps4load.tmp"
-#define VERSION                 "v0.1.0"
+#define VERSION                 "v0.5.0"
 #define PORT                    4299
 #define MAX_ARG_COUNT           0x100
 #define FRAME_WIDTH             1920
 #define FRAME_HEIGHT            1080
+#define CHUNK                   0x4000
+#define PKZIP                   0x04034B50
 
 #define ERROR(a, msg) { \
     if (a < 0) { \
@@ -59,6 +63,95 @@ volatile int flag_exit=0;
 void init_copperbars(void);
 void draw_copperbars(SDL_Renderer* render);
 
+void init_sinetext(SDL_Renderer* render, const char* path);
+void draw_sinetext(SDL_Renderer* render, int y);
+
+
+/* Decompress from source data to file dest until stream ends or EOF.
+   inf() returns Z_OK on success, Z_MEM_ERROR if memory could not be
+   allocated for processing, Z_DATA_ERROR if the deflate data is
+   invalid or incomplete, Z_VERSION_ERROR if the version of zlib.h and
+   the version of the library linked do not match, or Z_ERRNO if there
+   is an error reading or writing the files. */
+int inflate_data(int source, uint32_t filesize, FILE *dest)
+{
+    int ret;
+    uint32_t have;
+    z_stream strm;
+    uint8_t src[CHUNK];
+    uint8_t out[CHUNK];
+
+    /* allocate inflate state */
+    memset(&strm, 0, sizeof(z_stream));
+    ret = inflateInit(&strm);
+    if (ret != Z_OK)
+        return ret;
+
+    /* decompress until deflate stream ends or end of file */
+    do {
+        strm.avail_in = MIN(CHUNK, filesize);
+        ret = read(source, src, strm.avail_in);
+        if (ret < 0) {
+            (void)inflateEnd(&strm);
+            return Z_ERRNO;
+        }
+
+        strm.avail_in = ret;
+        if (strm.avail_in == 0)
+            break;
+        strm.next_in = src;
+        filesize -= ret;
+
+        /* run inflate() on input until output buffer not full */
+        do {
+            strm.avail_out = CHUNK;
+            strm.next_out = out;
+            ret = inflate(&strm, Z_NO_FLUSH);
+            switch (ret) {
+            case Z_STREAM_ERROR:
+            case Z_NEED_DICT:
+                ret = Z_DATA_ERROR;     /* and fall through */
+            case Z_DATA_ERROR:
+            case Z_MEM_ERROR:
+                (void)inflateEnd(&strm);
+                return ret;
+            }
+            have = CHUNK - strm.avail_out;
+            if (fwrite(out, 1, have, dest) != have || ferror(dest)) {
+                (void)inflateEnd(&strm);
+                return Z_ERRNO;
+            }
+        } while (strm.avail_out == 0);
+
+        /* done when inflate() says it's done */
+    } while (ret != Z_STREAM_END && filesize);
+
+    /* clean up and return */
+    (void)inflateEnd(&strm);
+    return (ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR);
+}
+
+int dump_data(int source, uint32_t filesize, FILE *dest)
+{
+    uint8_t data[CHUNK];
+    uint32_t count, pkz = PKZIP;
+
+    while (filesize > 0)
+    {
+        count = MIN(CHUNK, filesize);
+        int ret = read(source, data, count);
+        if (ret < 0)
+            return Z_DATA_ERROR;
+
+        if (pkz == PKZIP)
+            pkz = memcmp(data, &pkz, 4);
+
+        fwrite(data, ret, 1, dest);
+        filesize -= ret;
+    }
+
+    return (pkz ? Z_OK : PKZIP);
+}
 
 int netThread(void* data)
 {
@@ -128,20 +221,22 @@ reloop:
         filesize = __bswap32(filesize);
         uncompressed = __bswap32(uncompressed);
 
+        remove(SELF_PATH);
+        FILE *fd = fopen(SELF_PATH, "wb");
+        if (!fd) {
+            close(c);
+            ERROR2(-1, "Error opening temporary file.");
+        }
+
         //fgColor.g = 255;
         snprintf(msg_two, sizeof(msg_two), "Receiving data... (0x%08x/0x%08x)", filesize, uncompressed);
         dbglogger_log(msg_two);
 
-        uint8_t* data = (uint8_t*)malloc(filesize);
-        uint32_t pos = 0;
-        uint32_t count;
-        while (pos < filesize) {
-            count = MIN(0x1000, filesize - pos);
-            int ret = read(c, data + pos, count);
-            if (ret < 0)
-                continueloop();
-            pos += ret;
-        }
+        int ret = uncompressed ? inflate_data(c, filesize, fd) : dump_data(c, filesize, fd);
+        fclose(fd);
+
+        if (ret != Z_OK && ret != PKZIP)
+            continueloop();
 
         snprintf(msg_two, sizeof(msg_two), "Receiving arguments... 0x%08x", argslen);
         dbglogger_log(msg_two);
@@ -154,47 +249,21 @@ reloop:
         }
         close(c);
 
-        snprintf(msg_two, sizeof(msg_two), "Decompressing...");
-        dbglogger_log(msg_two);
+        if (!uncompressed && ret == PKZIP)
+        {
+            snprintf(msg_two, sizeof(msg_two), "Extracting ZIP to /data/ ...");
+            dbglogger_log(msg_two);
 
-        if (uncompressed) {
-            uint8_t* compressed = data;
-            uLongf final = uncompressed;
-            data = (uint8_t*)malloc(final);
-            int ret = uncompress(data, &final, compressed, filesize);
-            if (ret != Z_OK)
-                continue;
-            free(compressed);
-            if (uncompressed != final)
-                continue;
-            uncompressed = final;
-        } else
-            uncompressed = filesize;
-
-        snprintf(msg_two, sizeof(msg_two), "Saving data...");
-        dbglogger_log(msg_two);
-
-        remove(SELF_PATH);
-        FILE *fd = fopen(SELF_PATH, "wb");
-        if (!fd) ERROR2(-1, "Error opening temporary file.");
-
-        pos = 0;
-        while (pos < uncompressed) {
-            count = MIN(0x1000, uncompressed - pos);
-            fwrite(data + pos, count, 1, fd);
-            pos += count;
+            ERROR2(zip_extract(SELF_PATH, "/data/", NULL, NULL), "Error extracting ZIP file.");
+            goto reloop;
         }
 
-        fclose(fd);
-        free(data);
-
-        chmod(SELF_PATH, 0777);
+        ERROR2(chmod(SELF_PATH, 0777), "Failed to chmod() temporary file.");
 
         char* launchargv[MAX_ARG_COUNT];
         memset(launchargv, 0, sizeof(launchargv));
 
-        pos = 0;
-        int i = 0;
+        int i = 0, pos = 0;
         while (pos < argslen) {
             int len = strlen((char*)args + pos);
             if (!len)
@@ -278,6 +347,7 @@ int main(int argc, char *argv[])
 
     SDL_CreateThread(&netThread, "net", &done);
     init_copperbars();
+    init_sinetext(renderer, "/app0/assets/images/psl1ght.tga");
 
     Color fgColor = {0xFF, 0xFF, 0xFF};
 
@@ -287,6 +357,7 @@ int main(int argc, char *argv[])
         SDL_RenderClear(renderer);
 
         draw_copperbars(renderer);
+        draw_sinetext(renderer, 520);
 
         DrawString(renderer, "PS4Load " VERSION " by Bucanero", fontFace, fgColor, 0, 100);
         DrawString(renderer, msg_two, fontFace, fgColor, 0, 800);

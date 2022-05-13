@@ -5,7 +5,7 @@ TITLE_ID    := LOAD00044
 CONTENT_ID  := IV0000-LOAD00044_00-SDL2GLES20000000
 
 # Libraries linked into the ELF.
-LIBS        := -lc -lkernel -ldbglogger -lSceSystemService -lSceSysmodule -lScePigletv2VSH -lSceAudioOut -lScePad -lSceUserService -lSceFreeType -lSDL2 -lz
+LIBS        := -lc -lkernel -ldbglogger -lSceSystemService -lSceSysmodule -lScePigletv2VSH -lSceAudioOut -lScePad -lSceUserService -lSceFreeType -lSDL2 -lSDL2_image -lzip -lz
 
 # Additional compile flags.
 #EXTRAFLAGS  := 

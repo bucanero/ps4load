@@ -142,8 +142,11 @@ void DrawString(SDL_Renderer *renderer, const char* msg, FT_Face font, Color col
 {
     SDL_Rect pos;
     Color bgColor = {0x60, 0x60, 0x60};
-    SDL_Texture *tmpText = CreateText(renderer, msg, font, color, bgColor, &pos.x);
 
+    if (!msg[0])
+        return;
+
+    SDL_Texture *tmpText = CreateText(renderer, msg, font, color, bgColor, &pos.x);
     SDL_QueryTexture(tmpText, NULL, NULL, &pos.w, &pos.h);
 
     // Center it
