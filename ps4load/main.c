@@ -152,8 +152,24 @@ int dump_data(int source, uint32_t filesize, FILE *dest)
     return (pkz ? Z_OK : PKZIP);
 }
 
+void launch_self(const char* path, const char** args)
+{
+    dbglogger_log(msg_two);
+    dbglogger_stop();
+    sleep(1);
+
+    sceSystemServiceLoadExec(path, args);
+    sceKernelUsleep(2 * 1000000);
+}
+
 int netThread(void* data)
 {
+    if (access("/data/ps4load/eboot.bin", F_OK) == Z_OK)
+    {
+        snprintf(msg_two, sizeof(msg_two), "Loading eboot.bin...");
+        launch_self("/data/ps4load/eboot.bin", NULL);
+    }
+
     snprintf(msg_two, sizeof(msg_two), "Creating socket...");
     dbglogger_log(msg_two);
 
@@ -274,13 +290,7 @@ reloop:
         }
 
         snprintf(msg_two, sizeof(msg_two), "Launching...");
-        dbglogger_log(msg_two);
-
-        dbglogger_stop();
-        sleep(1);
-
-        sceSystemServiceLoadExec(SELF_PATH, (const char**)launchargv);
-        sceKernelUsleep(2 * 1000000);
+        launch_self(SELF_PATH, (const char**)launchargv);
     }
 
     return 0;
