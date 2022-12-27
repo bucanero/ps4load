@@ -9,22 +9,37 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v3
-      with:
-        fetch-depth: 1
 
-    - name: Checkout Dependecies
-      run: |
-        git clone https://github.com/bucanero/dbglogger.git       --depth 1
-        git clone https://github.com/bucanero/zip.git             --depth 1
-        git clone https://github.com/bucanero/oosdk_libraries.git --depth 1
-        git clone https://github.com/bucanero/SDL-PS4 -b ps4      --depth 1
+    - name: Checkout dbglogger
+      uses: actions/checkout@v3
+      with:
+        repository: bucanero/dbglogger
+        path: dbglogger
+
+    - name: Checkout zip
+      uses: actions/checkout@v3
+      with:
+        repository: bucanero/zip
+        path: zip
+
+    - name: Checkout oosdk_libraries
+      uses: actions/checkout@v3
+      with:
+        repository: bucanero/oosdk_libraries
+        path: oosdk_libraries
+
+    - name: Checkout SDL-PS4
+      uses: actions/checkout@v3
+      with:
+        repository: bucanero/SDL-PS4
+        path: SDL-PS4
+        ref: ps4
 
     - name: Set env vars
       id: slug
       run: |
-        echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
-        echo "pkg_file=IV0000-LOAD00044_00-SDL2GLES20000000.pkg" >> $GITHUB_ENV
-        echo "llvm_ver=10.0" >> $GITHUB_ENV
+        echo "sha_name=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
+        echo "llvm_ver=12.0" >> $GITHUB_ENV
 
       # temporary release until 0.53 is released
     - name: Download OpenOrbis Toolchain
@@ -76,8 +91,8 @@ jobs:
     - name: Push package artifact
       uses: actions/upload-artifact@v3
       with:
-        name: ps4load-build_${{ steps.slug.outputs.sha8 }}
-        path: ${{ env.pkg_file }}
+        name: ps4load-build_${{ env.sha_name }}
+        path: IV0000-LOAD00044_00-SDL2GLES20000000.pkg
         if-no-files-found: error
         retention-days: 7
         # don't keep artifacts for too long

@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <orbis/NetCtl.h>
 #include <orbis/libkernel.h>
 #include <orbis/Sysmodule.h>
 #include <orbis/SystemService.h>
@@ -24,7 +25,7 @@
 
 #define MIN(a, b)               ((a) < (b) ? (a) : (b))
 #define SELF_PATH               "/data/ps4load.tmp"
-#define VERSION                 "v0.5.0"
+#define VERSION                 "v0.5.1"
 #define PORT                    4299
 #define MAX_ARG_COUNT           0x100
 #define FRAME_WIDTH             1920
@@ -170,6 +171,10 @@ int netThread(void* data)
         launch_self("/data/ps4load/eboot.bin", NULL);
     }
 
+    OrbisNetCtlInfo ip_info;
+    memset(&ip_info, 0, sizeof(ip_info));
+    sceNetCtlGetInfo(ORBIS_NET_CTL_INFO_IP_ADDRESS, &ip_info);
+
     snprintf(msg_two, sizeof(msg_two), "Creating socket...");
     dbglogger_log(msg_two);
 
@@ -203,7 +208,7 @@ reloop:
         if(my_socket == -1) continue;
 
         //fgColor.r = fgColor.g = fgColor.b = 0xff;
-        snprintf(msg_two, sizeof(msg_two), "Waiting for connection...");
+        snprintf(msg_two, sizeof(msg_two), "%s:%d ready for client...", ip_info.ip_address, PORT);
         dbglogger_log(msg_two);
 
         int c = accept(my_socket, NULL, NULL);
@@ -304,6 +309,11 @@ int main(int argc, char *argv[])
     int done = 0;
 
     dbglogger_init();
+
+    if (sceSysmoduleLoadModuleInternal(ORBIS_SYSMODULE_INTERNAL_NETCTL) < 0 || sceNetCtlInit() < 0) {
+        dbglogger_log("NetCtl init failed");
+        return -1;
+    }
 
     // mandatory at least on switch, else gfx is not properly closed
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
