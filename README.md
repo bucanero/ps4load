@@ -17,7 +17,7 @@ I hope this version helps you build PS4 homebrews easily!
 
 ## Usage
 
-Install the package on your PS4. Open the PS4Load host app, and then use the `ps3load` client to send your `eboot.bin` or `.zip` file:
+Install the package on your PS4. Open the PS4Load host app, and then use the [ps3load client](https://github.com/bucanero/ps4load/tree/main/client) to send your `eboot.bin` or `.zip` file:
 
 ### Linux/macOS
 
@@ -46,16 +46,16 @@ You need to have installed:
 Run `make` to create a release build.
 
 You can also set the `PS3LOAD` environment variable to the PS4 IP address: `export PS3LOAD=tcp:x.x.x.x`.
-This will allow you to use `make run` and send `eboot.bin` directly to the [PS4Load host](https://github.com/bucanero/ps4load).
+This will allow you to use a `ps3load` client and send `eboot.bin` directly to the [PS4Load host](https://github.com/bucanero/ps4load).
 
-The PS4Load application will also send debug messages to
-UDP multicast address `239.255.0.100:30000`. To receive them you can use [socat][] on your computer:
+PS4Load will also send debug messages to UDP multicast address `239.255.0.100:30000`.
+To receive them you can use [socat][] on your computer:
 
     $ socat udp4-recv:30000,ip-add-membership=239.255.0.100:0.0.0.0 -
 
 ## License
 
-[PS4Load](https://github.com/bucanero/ps4load/) - Copyright (C) 2022  Damian Parrino
+[PS4Load](https://github.com/bucanero/ps4load/) - Copyright (C) 2022  [Damian Parrino](https://twitter.com/dparrino)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the [GNU General Public License](LICENSE) as published by
